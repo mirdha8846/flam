@@ -269,9 +269,32 @@ function drawPoint(p, color) {
 
 // --- 7. Main Loop ---
 
-function loop() {
+let lastTime = 0;
+let fpsTimer = 0;
+let frameCount = 0;
+const fpsElement = document.getElementById('fps-meter');
+
+function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+
     updatePhysics();
     draw();
+    
+    // FPS Calculation (update every 500ms)
+    fpsTimer += deltaTime;
+    frameCount++;
+    
+    if (fpsTimer >= 500) {
+        const fps = Math.round((frameCount * 1000) / fpsTimer);
+        if (fpsElement) {
+             fpsElement.innerText = `FPS: ${fps}`;
+        }
+        fpsTimer = 0;
+        frameCount = 0;
+    }
+
     requestAnimationFrame(loop);
 }
 
@@ -304,4 +327,4 @@ window.addEventListener('mouseup', () => {
 
 // Init
 resize();
-loop();
+requestAnimationFrame(loop);
