@@ -1,74 +1,119 @@
-# **Assignment: Interactive Bézier Curve with Physics & Sensor Control**
+# Interactive Physics Bézier 
 
-### **Objective**
+![Project Status](https://img.shields.io/badge/status-active-success.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
 
-Implement an **interactive cubic Bézier curve** that behaves like a rope reacting to motion input.
+> A high-performance, interactive physics simulation that combines cubic Bézier curves with spring-mass dynamics, real-time force visualization, and generative audio feedback.
 
-This project tests your understanding of **math, graphics programming, and real-time input handling**.
+## 📖 About The Project
 
----
+**Interactive Physics Bézier** is a web-based simulation that reimagines a standard Bézier curve as a physical string. Unlike static vector paths, this project models the control points as physical masses attached to springs, allowing for natural, organic motion and interaction.
 
-## **Problem Statement**
+It serves as both a visual experiment and an educational tool to demonstrate:
+*   **Spring-Mass Dynamics**: Real-time calculation of spring forces (Hooke's Law) and damping.
+*   **Vector Mathematics**: Visualization of force vectors (Spring Force within blue, Damping Force in red).
+*   **Generative Audio**: Dynamic sound synthesis using the Web Audio API based on string tension.
+*   **Particle Systems**: Reactive visual effects upon user interaction.
 
-Create a visual simulation where a cubic Bézier curve dynamically responds to **device gyroscope data (iOS)** or **mouse movement (Web)**.
+## ✨ Key Features
 
-The curve should move smoothly, visualize its **tangents**, and behave like a springy rope when control points are displaced.
+*   **⚡ Real-time Physics Engine**: Custom-built JS physics engine handling velocity, acceleration, and damping for control points.
+*   **🎛️ Interactive Control Panel**: Fine-tune physical properties on the fly:
+    *   **Stiffness**: Control the elasticity of the "string".
+    *   **Damping**: Adjust how quickly the oscillation settles.
+    *   **Tangent Length**: Modify the visual curvature handles.
+*   **📊 Force Visualization**: Toggleable overlay showing the exact force vectors acting on the control points `Fs` (Spring) and `Fd` (Damping).
+*   **🎵 Procedural Audio**: "Twang" sound effects generated in real-time based on the tension of the release.
+*   **✨ Particle Effects**: Visual feedback system that spawns particles on interaction points.
+*   **📈 Performance Metrics**: Integrated FPS counter to monitor rendering performance.
 
-You must implement all logic — including Bézier math, tangent computation, and spring physics — from scratch.
+## 🛠️ Built With
 
----
+This project is built with a focus on performance and minimal dependencies.
 
-## **Core Requirements**
+*   ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white) **HTML5 Canvas** for high-performance rendering.
+*   ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white) **CSS3** for modern, responsive UI styling.
+*   ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black) **Vanilla JavaScript (ES6+)** for all logic, physics, and particle systems.
 
-### **1. Bézier Curve Math**
+## 🚀 Getting Started
 
-Implement a **cubic Bézier curve** using 4 control points:
+To get a local copy up and running, follow these simple steps.
 
-B(t) = (1−t)³P₀ + 3(1−t)²tP₁ + 3(1−t)t²P₂ + t³P₃
+### Prerequisites
 
-- Use small t increments (e.g., 0.01) to sample the curve for rendering.
+*   A modern web browser (Chrome, Firefox, Safari, Edge) with JavaScript enabled.
 
----
+### Installation
 
-### **2. Control Points Behavior**
+1.  **Clone the repo**
+    ```sh
+    git clone https://github.com/your-username/flam.git
+    ```
+2.  **Navigate to the project directory**
+    ```sh
+    cd flam/flam
+    ```
+3.  **Run the project**
+    *   Simply open `index.html` in your browser.
+    *   OR serve it using a local development server (recommended for Audio Context to work properly in some browsers):
+        ```sh
+        # Python 3
+        python -m http.server 8000
+        
+        # Node (Live Server)
+        npx live-server
+        ```
 
-- **P₀** and **P₃**: fixed endpoints.
-- **P₁** and **P₂**: dynamic — move in response to:
-    - **iOS**: Gyroscope rotation (pitch, yaw, roll) via CoreMotion.
-    - **Web**: Mouse position or drag input.
+## 🎮 Usage Guide
 
-Add a simple **spring-damping model** for smooth, natural motion:
+1.  **Interact**: Move your mouse over the curve. The control points (P1, P2) will react to your presence.
+2.  **Pluck**: Click and drag any part of the string or control points, then release to "pluck" it.
+3.  **Adjust**: Use the control panel on the left to change:
+    *   **Spring Stiffness**: Higher values make the string snap back faster.
+    *   **Damping**: Lower values make the string oscillate longer.
+    *   **Show Force Vectors**: Check this box to see the underlying physics forces in action.
 
-acceleration = -k * (position - target) - damping * velocity
+## 🧮 Physics Model
 
----
+The core of the simulation relies on a custom implementation of **Hooke's Law** for spring forces and linear damping for energy loss.
 
-### **3. Tangent Visualization**
+$$ F_{net} = -k(x - x_{rest}) - cv $$
 
-Compute tangent vectors using the derivative:
+Where:
+*   $k$ is the Stiffness coefficient.
+*   $x$ is the current position.
+*   $c$ is the Damping coefficient.
+*   $v$ is the velocity.
 
-B'(t) = 3(1−t)²(P₁−P₀) + 6(1−t)t(P₂−P₁) + 3t²(P₃−P₂)
+The curve itself is rendered as a **Cubic Bézier Curve**, where the intermediate control points are the dynamic spring masses.
 
-- 
-- Normalize and draw short tangent lines at intervals along the curve.
+## 📂 Project Structure
 
----
+```text
+flam/
+├── index.html      # Main entry point and UI structure
+├── script.js       # Core logic: Physics engine, Rendering, Audio, Input handling
+├── style.css       # Styling for the overlay UI and control panel
+└── Readme.md       # Project documentation
+```
 
-### **4. Interaction & Rendering**
+## 🤝 Contributing
 
-- Render:
-    - The curve path.
-    - Control points (visible as small circles).
-    - Tangent lines at several points.
-- **iOS:** Use Swift + CoreMotion + CADisplayLink.
-- **Web:** Use plain HTML Canvas + JavaScript.
-- Maintain at least **60 FPS**.
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
----
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
-## **Rules**
+## 📄 License
 
-1. **Do not** use prebuilt physics, animation, or Bézier APIs (UIBezierPath, D3.js, etc.).
-2. The Bézier math and motion logic must be fully manual.
-3. Organize code cleanly into math, rendering, and input sections.
-4. The visualization must be **interactive and real-time**.
+Distributed under the MIT License. See `LICENSE` for more information.
+
+## 📞 Contact
+
+Your Name - [@your_twitter](https://twitter.com/your_twitter) - email@example.com
+
+Project Link: [https://github.com/your-username/flam](https://github.com/your-username/flam)
