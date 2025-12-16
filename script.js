@@ -41,6 +41,10 @@ class Vector2 {
         if (m === 0) return new Vector2(0, 0);
         return new Vector2(this.x / m, this.y / m);
     }
+
+    dist(v) {
+        return Math.sqrt(Math.pow(this.x - v.x, 2) + Math.pow(this.y - v.y, 2));
+    }
 }
 
 // --- 2. Physics Engine ---
@@ -84,6 +88,9 @@ let targetP2 = new Vector2(0, 0);
 let P0, P3; // Fixed anchors
 let P1, P2; // Physics points
 
+// Drag State
+let draggingPoint = null;
+
 function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
@@ -108,13 +115,6 @@ function resize() {
 // --- 4. Motion Logic ---
 
 function updatePhysics() {
-    // Map mouse X to influence P1 and P2 targets slightly differently to create a "wave" feel
-    // Or simpler: P1 tries to follow mouse 50%, P2 tries to follow mouse 50%
-    
-    // Let's make targets "float" towards mouse but with an offset based on their rest positions
-    // This maintains the rope structure while essentially "pulling" the middle of the rope
-    
-    // Strategy: The "Target" for P1/P2 is their original rest position + (MouseOffset * influence)
     
     const midY = height / 2;
     const margin = width * 0.2;
@@ -123,19 +123,21 @@ function updatePhysics() {
     const restP1 = new Vector2(margin + span * 0.33, midY);
     const restP2 = new Vector2(margin + span * 0.66, midY);
     
-    // Calculate vector from center of screen to mouse
-    const center = new Vector2(width / 2, height / 2);
-    const mouseOffset = mousePos.sub(center);
+    // Logic:
+    // If dragging a point, its target is the mouse.
+    // If NOT dragging, target is rest position (spring back).
     
-    // Apply this offset to the targets, maybe scaled?
-    // Let's implement the "iOS Gyro" style logic but with mouse.
-    // Mouse X/Y displaces the control points.
-    
-    // Simple Interaction: Mouse ATTRACTION.
-    // The targets move towards the mouse.
-    
-    targetP1 = restP1.add(mouseOffset.mult(0.8)); // P1 moves 80% with mouse
-    targetP2 = restP2.add(mouseOffset.mult(0.8)); // P2 moves 80% with mouse
+    if (draggingPoint === P1) {
+        targetP1 = mousePos; 
+    } else {
+        targetP1 = restP1;
+    }
+
+    if (draggingPoint === P2) {
+        targetP2 = mousePos;
+    } else {
+        targetP2 = restP2;
+    }
     
     P1.update(targetP1);
     P2.update(targetP2);
@@ -253,8 +255,9 @@ function draw() {
     // 4. Draw Points
     drawPoint(P0, '#fff'); // Anchor
     drawPoint(P3, '#fff'); // Anchor
-    drawPoint(P1.pos, '#ffcc00'); // Control 1
-    drawPoint(P2.pos, '#ffcc00'); // Control 2
+    // Highlight if dragging
+    drawPoint(P1.pos, draggingPoint === P1 ? '#ff0000' : '#ffcc00'); // Control 1
+    drawPoint(P2.pos, draggingPoint === P2 ? '#ff0000' : '#ffcc00'); // Control 2
 }
 
 function drawPoint(p, color) {
@@ -276,8 +279,27 @@ function loop() {
 
 window.addEventListener('resize', resize);
 window.addEventListener('mousemove', (e) => {
-    mousePos.x = e.clientX;
-    mousePos.y = e.clientY;
+    mousePos = new Vector2(e.clientX, e.clientY);
+});
+
+window.addEventListener('mousedown', (e) => {
+    // Check if clicking near P1 or P2
+    const clickPos = new Vector2(e.clientX, e.clientY);
+    const dist1 = clickPos.dist(P1.pos);
+    const dist2 = clickPos.dist(P2.pos);
+    
+    // Threshold for clicking
+    const threshold = 30; // 30px radius target
+    
+    if (dist1 < threshold) {
+        draggingPoint = P1;
+    } else if (dist2 < threshold) {
+        draggingPoint = P2;
+    }
+});
+
+window.addEventListener('mouseup', () => {
+    draggingPoint = null;
 });
 
 // Init
