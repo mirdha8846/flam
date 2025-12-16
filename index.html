@@ -11,9 +11,39 @@
 <body>
     <div id="ui-overlay">
         <h1>Interactive Physics Bézier</h1>
-        <p>Move your mouse to disturb the rope.</p>
+        <p>Move mouse to interact. Drag to pluck.</p>
     </div>
     <div id="fps-meter">FPS: --</div>
+
+    <!-- Physics Control Panel -->
+    <div class="controls-card">
+        <div class="header">PHYSICS</div>
+
+        <div class="control-group">
+            <div class="label-row">
+                <label>Spring Stiffness</label>
+                <span id="val-stiffness">0.08</span>
+            </div>
+            <input type="range" id="stiffness" min="0.01" max="0.30" step="0.01" value="0.08">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row">
+                <label>Damping</label>
+                <span id="val-damping">0.90</span>
+            </div>
+            <input type="range" id="damping" min="0.50" max="0.99" step="0.01" value="0.90">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row">
+                <label>Tangent Length</label>
+                <span id="val-tangent">20</span>
+            </div>
+            <input type="range" id="tangent" min="5" max="100" step="1" value="20">
+        </div>
+    </div>
+
     <canvas id="canvas"></canvas>
     <script src="script.js"></script>
 </body>

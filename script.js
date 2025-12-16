@@ -47,7 +47,7 @@ class Vector2 {
     }
 }
 
-// --- 2. Audio Engine (The "Unique" Factor) ---
+// --- 2. Audio Engine ---
 
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
@@ -63,13 +63,10 @@ function playTwang(tension) {
     const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
 
-    // Frequency based on tension (higher tension = higher pitch)
-    // Base 200Hz, plus tension scaler
     const freq = 200 + (tension * 2); 
     osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, audioCtx.currentTime + 0.5); // Pitch drop effect
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.5, audioCtx.currentTime + 0.5); 
 
-    // Volume envelope
     gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
 
@@ -85,27 +82,26 @@ function playTwang(tension) {
 // --- 3. Physics Engine ---
 
 class SpringPoint {
-    constructor(x, y, stiffness = 0.08, damping = 0.90) { // Heavy rope feel
+    constructor(x, y, stiffness, damping) { 
         this.pos = new Vector2(x, y);
         this.vel = new Vector2(0, 0);
         this.stiffness = stiffness; 
         this.damping = damping;
-        
-        // Vibration properties
         this.vibrationAmp = 0;
         this.vibrationPhase = 0;
     }
 
     update(targetPos) {
-        // Main Hooke's Law Physics
+        // Use live config if available, else stick to own params? 
+        // For control panel, better to update params dynamically.
+        
         const force = targetPos.sub(this.pos).mult(this.stiffness);
         this.vel.addClass(force);
         this.vel.multScalar(this.damping);
         this.pos.addClass(this.vel);
         
-        // Vibration Decay
         this.vibrationAmp *= 0.95; 
-        this.vibrationPhase += 0.5; // High speed oscillation phase
+        this.vibrationPhase += 0.5; 
     }
 
     triggerVibration(intensity) {
@@ -113,7 +109,7 @@ class SpringPoint {
     }
 }
 
-// --- 4. Particle System (Visual Juice) ---
+// --- 4. Particle System ---
 
 class Particle {
     constructor(x, y, color) {
@@ -125,7 +121,7 @@ class Particle {
     
     update() {
         this.pos.addClass(this.vel);
-        this.vel.multScalar(0.9); // Air friction
+        this.vel.multScalar(0.9); 
         this.life -= 0.03;
     }
     
@@ -161,6 +157,13 @@ let P0, P3;
 let P1, P2; 
 let draggingPoint = null;
 
+// Configuration
+const config = {
+    stiffness: 0.08,
+    damping: 0.90,
+    tangentLength: 20
+};
+
 function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
@@ -169,9 +172,9 @@ function resize() {
     P0 = new Vector2(margin, midY);
     P3 = new Vector2(width - margin, midY);
     const span = width - 2 * margin;
-    // Heavy Physics Default
-    P1 = new SpringPoint(margin + span * 0.33, midY, 0.08, 0.90);
-    P2 = new SpringPoint(margin + span * 0.66, midY, 0.08, 0.90);
+    
+    P1 = new SpringPoint(margin + span * 0.33, midY, config.stiffness, config.damping);
+    P2 = new SpringPoint(margin + span * 0.66, midY, config.stiffness, config.damping);
     targetP1 = new Vector2(margin + span * 0.33, midY);
     targetP2 = new Vector2(margin + span * 0.66, midY);
 }
@@ -185,7 +188,6 @@ function updatePhysics() {
     const span = width - 2 * margin;
     const restP1 = new Vector2(margin + span * 0.33, midY);
     const restP2 = new Vector2(margin + span * 0.66, midY);
-    
     const influenceRadius = 300; 
     const influenceStrength = 0.4; 
     
@@ -217,8 +219,11 @@ function updatePhysics() {
         targetP2 = target;
     }
     
-    P1.update(targetP1);
-    P2.update(targetP2);
+    // Safety check if physics points exist (resize might not have run yet if very fast)
+    if (P1 && P2) {
+        P1.update(targetP1);
+        P2.update(targetP2);
+    }
     
     // Update Particles
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -236,17 +241,8 @@ function getBezierPoint(t, p0, p1, p2, p3) {
     const t2 = t * t;
     const t3 = t2 * t;
 
-    // Add Vibration Noise
-    // We add a sine wave perpendicular to the line? or just Y offset for simplicity.
-    // Let's use P1 and P2's vibration state to perturb the curve
-    
-    // Simple interpolation of vibration amplitude based on t
-    // P1 affects 0.33 region, P2 affects 0.66 region
-    // Simplification: Average vibration for the whole string (but strongest in middle)
     const vib1 = Math.sin(P1.vibrationPhase) * P1.vibrationAmp;
     const vib2 = Math.sin(P2.vibrationPhase) * P2.vibrationAmp;
-    
-    // Weigh vibration by bell curve (sin(PI*t)) so ends don't vibrate
     const vibrationY = (vib1 + vib2) * Math.sin(Math.PI * t); 
 
     const term0 = p0.mult(mt3);
@@ -255,7 +251,7 @@ function getBezierPoint(t, p0, p1, p2, p3) {
     const term3 = p3.mult(t3);
 
     const b = term0.add(term1).add(term2).add(term3);
-    b.y += vibrationY; // Apply vibration
+    b.y += vibrationY; 
     return b;
 }
 
@@ -275,7 +271,6 @@ function draw() {
     ctx.fillStyle = '#0d0d12';
     ctx.fillRect(0, 0, width, height);
 
-    // Filter Grid
     ctx.strokeStyle = '#1a1a24';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -283,14 +278,12 @@ function draw() {
     for(let y=0; y<height; y+=50) { ctx.moveTo(0,y); ctx.lineTo(width,y); }
     ctx.stroke();
 
-    // 1. Draw "String"
+    // 1. String
     ctx.strokeStyle = '#00ffcc';
     ctx.lineWidth = 4;
     ctx.lineCap = 'round';
     ctx.shadowBlur = 15;
     ctx.shadowColor = '#00ffcc';
-    
-    // Dynamic color based on tension/velocity could be cool, but keep standard for now
     
     ctx.beginPath();
     const step = 0.01;
@@ -315,7 +308,7 @@ function draw() {
     for (let t = 0; t <= 1.0; t += tangentInterval) {
         let p = getBezierPoint(t, P0, P1.pos, P2.pos, P3);
         let tan = getBezierTangent(t, P0, P1.pos, P2.pos, P3);
-        const tanLen = 20;
+        const tanLen = config.tangentLength; // Use Config
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(p.x + tan.x * tanLen, p.y + tan.y * tanLen);
@@ -383,9 +376,7 @@ window.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mousedown', (e) => {
-    // Start Audio Context on first interaction
     initAudio();
-    
     const clickPos = new Vector2(e.clientX, e.clientY);
     const dist1 = clickPos.dist(P1.pos);
     const dist2 = clickPos.dist(P2.pos);
@@ -397,30 +388,46 @@ window.addEventListener('mousedown', (e) => {
 
 window.addEventListener('mouseup', () => {
     if (draggingPoint) {
-        // Calculate tension based on distance from rest
-        // We know rest positions from update logic, but let's approx with velocity or just displacement
-        // A simple "snap" effect
-        const tension = draggingPoint.vel.mag() * 10; // Or dist from rest
-        // Actually, dragging point has low velocity, we want the SNAP. 
-        // Let's use the distance from its rest position at the moment of release.
-        
-        // Approximate rest pos check
-        const midY = height / 2;
-        const margin = width * 0.2;
-        const span = width - 2 * margin;
-        
-        // Just use arbitrary huge tension if it was far
-        // Simplified: Play Sound!
         playTwang(100); 
-        
-        // Trigger Vibration Physics
-        draggingPoint.triggerVibration(15); // Amplitude in pixels
-        
-        // Spawn Particles
+        draggingPoint.triggerVibration(15); 
         spawnParticles(draggingPoint.pos.x, draggingPoint.pos.y, 20, '#ffffff');
     }
     draggingPoint = null;
 });
+
+// UI Inputs
+const elStiffness = document.getElementById('stiffness');
+const elDamping = document.getElementById('damping');
+const elTangent = document.getElementById('tangent');
+const valStiffness = document.getElementById('val-stiffness');
+const valDamping = document.getElementById('val-damping');
+const valTangent = document.getElementById('val-tangent');
+
+// Helper to update everything
+function updateConfig() {
+    config.stiffness = parseFloat(elStiffness.value);
+    config.damping = parseFloat(elDamping.value);
+    config.tangentLength = parseFloat(elTangent.value);
+
+    // Update Display
+    valStiffness.innerText = config.stiffness;
+    valDamping.innerText = config.damping;
+    valTangent.innerText = config.tangentLength;
+
+    // Direct Update Physics if active
+    if (P1 && P2) {
+        P1.stiffness = config.stiffness;
+        P1.damping = config.damping;
+        P2.stiffness = config.stiffness;
+        P2.damping = config.damping;
+    }
+}
+
+// Bind Events
+elStiffness.addEventListener('input', updateConfig);
+elDamping.addEventListener('input', updateConfig);
+elTangent.addEventListener('input', updateConfig);
+
 
 resize();
 requestAnimationFrame(loop);
