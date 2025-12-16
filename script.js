@@ -89,19 +89,33 @@ class SpringPoint {
         this.damping = damping;
         this.vibrationAmp = 0;
         this.vibrationPhase = 0;
+        
+        // Debug Vectors
+        this.lastSpringForce = new Vector2(0,0);
+        this.lastDampingForce = new Vector2(0,0);
     }
 
     update(targetPos) {
-        // Use live config if available, else stick to own params? 
-        // For control panel, better to update params dynamically.
+        // Spring Force
+        const springForce = targetPos.sub(this.pos).mult(this.stiffness);
         
-        const force = targetPos.sub(this.pos).mult(this.stiffness);
-        this.vel.addClass(force);
+        // Damping Force Calculation (Approximate for visual)
+        // Force due to damping is proportional to velocity: F = -c * v
+        // Here we use linear damping v *= damping. 
+        // Force ~ -(1 - damping) * v
+        const dampingForce = this.vel.mult(-(1 - this.damping)); 
+        
+        // Apply Physics
+        this.vel.addClass(springForce);
         this.vel.multScalar(this.damping);
         this.pos.addClass(this.vel);
         
         this.vibrationAmp *= 0.95; 
         this.vibrationPhase += 0.5; 
+        
+        // Store for rendering
+        this.lastSpringForce = springForce;
+        this.lastDampingForce = dampingForce;
     }
 
     triggerVibration(intensity) {
@@ -115,6 +129,7 @@ class Particle {
     constructor(x, y, color) {
         this.pos = new Vector2(x, y);
         this.vel = new Vector2((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+        this.vel.y += -2; 
         this.life = 1.0;
         this.color = color;
     }
@@ -161,7 +176,8 @@ let draggingPoint = null;
 const config = {
     stiffness: 0.08,
     damping: 0.90,
-    tangentLength: 20
+    tangentLength: 20,
+    showForces: false
 };
 
 function resize() {
@@ -191,7 +207,6 @@ function updatePhysics() {
     const influenceRadius = 300; 
     const influenceStrength = 0.4; 
     
-    // -- Handle P1 --
     if (draggingPoint === P1) {
         targetP1 = mousePos; 
     } else {
@@ -205,7 +220,6 @@ function updatePhysics() {
         targetP1 = target;
     }
 
-    // -- Handle P2 --
     if (draggingPoint === P2) {
         targetP2 = mousePos;
     } else {
@@ -219,13 +233,11 @@ function updatePhysics() {
         targetP2 = target;
     }
     
-    // Safety check if physics points exist (resize might not have run yet if very fast)
     if (P1 && P2) {
         P1.update(targetP1);
         P2.update(targetP2);
     }
     
-    // Update Particles
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].update();
         if (particles[i].life <= 0) particles.splice(i, 1);
@@ -266,6 +278,33 @@ function getBezierTangent(t, p0, p1, p2, p3) {
 }
 
 // --- 8. Rendering ---
+
+function drawVector(origin, vec, color, scale = 1) {
+    // scale is important, forces are small numbers usually
+    // Spring force (0.05 * dist) -> dist 100 -> force 5. Scale 10 = 50px line.
+    
+    const endpoint = origin.add(vec.mult(scale));
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(origin.x, origin.y);
+    ctx.lineTo(endpoint.x, endpoint.y);
+    ctx.stroke();
+    
+    // Arrowhead
+    // prevent error if vec is zero
+    if (vec.mag() < 0.001) return;
+
+    const angle = Math.atan2(vec.y, vec.x);
+    const headLen = 6;
+    ctx.beginPath();
+    ctx.moveTo(endpoint.x, endpoint.y);
+    ctx.lineTo(endpoint.x - headLen * Math.cos(angle - Math.PI / 6), endpoint.y - headLen * Math.sin(angle - Math.PI / 6));
+    // ctx.moveTo(endpoint.x, endpoint.y); // Not needed for lineTo
+    ctx.lineTo(endpoint.x - headLen * Math.cos(angle + Math.PI / 6), endpoint.y - headLen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+}
 
 function draw() {
     ctx.fillStyle = '#0d0d12';
@@ -308,7 +347,7 @@ function draw() {
     for (let t = 0; t <= 1.0; t += tangentInterval) {
         let p = getBezierPoint(t, P0, P1.pos, P2.pos, P3);
         let tan = getBezierTangent(t, P0, P1.pos, P2.pos, P3);
-        const tanLen = config.tangentLength; // Use Config
+        const tanLen = config.tangentLength; 
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
         ctx.lineTo(p.x + tan.x * tanLen, p.y + tan.y * tanLen);
@@ -326,14 +365,26 @@ function draw() {
     ctx.lineTo(P3.x, P3.y);
     ctx.stroke();
     ctx.setLineDash([]);
+    
+    // 4. Force Vectors
+    // We boost the scale significantly because forces can be small numbers
+    const forceScale = 200; 
+    if (config.showForces) {
+        // Draw P1
+        drawVector(P1.pos, P1.lastSpringForce, '#00aaff', forceScale); 
+        drawVector(P1.pos, P1.lastDampingForce, '#ff4444', forceScale); 
+        // Draw P2
+        drawVector(P2.pos, P2.lastSpringForce, '#00aaff', forceScale); 
+        drawVector(P2.pos, P2.lastDampingForce, '#ff4444', forceScale); 
+    }
 
-    // 4. Points
+    // 5. Points
     drawPoint(P0, '#fff'); 
     drawPoint(P3, '#fff'); 
     drawPoint(P1.pos, draggingPoint === P1 ? '#ff0000' : '#ffcc00'); 
     drawPoint(P2.pos, draggingPoint === P2 ? '#ff0000' : '#ffcc00'); 
     
-    // 5. Particles
+    // 6. Particles
     particles.forEach(p => p.draw(ctx));
 }
 
@@ -399,6 +450,7 @@ window.addEventListener('mouseup', () => {
 const elStiffness = document.getElementById('stiffness');
 const elDamping = document.getElementById('damping');
 const elTangent = document.getElementById('tangent');
+const elShowForces = document.getElementById('show-forces'); // Re-selecting
 const valStiffness = document.getElementById('val-stiffness');
 const valDamping = document.getElementById('val-damping');
 const valTangent = document.getElementById('val-tangent');
@@ -408,6 +460,7 @@ function updateConfig() {
     config.stiffness = parseFloat(elStiffness.value);
     config.damping = parseFloat(elDamping.value);
     config.tangentLength = parseFloat(elTangent.value);
+    config.showForces = elShowForces.checked; // Now actually reading it
 
     // Update Display
     valStiffness.innerText = config.stiffness;
@@ -427,6 +480,7 @@ function updateConfig() {
 elStiffness.addEventListener('input', updateConfig);
 elDamping.addEventListener('input', updateConfig);
 elTangent.addEventListener('input', updateConfig);
+elShowForces.addEventListener('change', updateConfig); // Added listener
 
 
 resize();
